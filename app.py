@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 
 # Define the server URL
-public_url = "https://tricky-tables-boil.loca.lt"  # Replace with your Colab server URL
+public_url = "https://major-moons-stare.loca.lt"  # Replace with your Colab server URL
 
 # Streamlit App
 st.title("Interactive Query System")
