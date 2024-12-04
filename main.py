@@ -4,6 +4,8 @@ import requests
 # Define the server URL
 public_url = "https://major-moons-stare.loca.lt"  # Replace with your Colab server URL
 
+openai.api_key = st.secrets["mykey"]
+
 # Streamlit App
 st.title("Interactive Query System")
 
