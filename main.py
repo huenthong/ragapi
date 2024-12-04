@@ -3,11 +3,10 @@ import requests
 import openai
 
 # Define the server URL
-public_url = "https://major-moons-stare.loca.lt"  
+public_url = "https://floppy-bees-join.loca.lt"  
 
 openai.api_key = st.secrets["mykey"]
 
-# Streamlit App
 st.title("Interactive Query System")
 
 # Parameter Configuration
@@ -33,7 +32,7 @@ if st.sidebar.button("Set Parameters"):
     response = requests.post(f"{public_url}/set-parameters", json={
         "temperature": temperature,
         "k": k,
-        "overlapping": overlapping,
+        "chunk_overlap": overlapping,
         "rerank_method": rerank_method,
         "index": index_type
     })
@@ -44,52 +43,18 @@ if st.sidebar.button("Set Parameters"):
     except requests.JSONDecodeError:
         st.sidebar.error("Failed to decode JSON from server response.")
         st.sidebar.write("Raw Response Text:", response.text)
-        
+
 # Conversational History
 st.header("Query Interface")
-st.text("Include up to 10 previous queries for context.")
 conversation = st.session_state.get("conversation", [])
 
 user_query = st.text_input("Enter your query:")
 if st.button("Submit Query"):
-    # Maintain conversational history
     if len(conversation) >= 10:
         conversation.pop(0)
     conversation.append(user_query)
 
-    # Send the query to the server
-    response = requests.post(f"{public_url}/query", params={
-        "query": user_query,
-        "history": conversation
-    })
+    response = requests.post(f"{public_url}/query", params={"query": user_query})
     data = response.json()
 
-    # Display the response
-    st.subheader("Response")
-    st.write(data)
-
-    # Chunk display with keywords
-    st.subheader("Chunks with Keywords")
-    chunks = data.get("chunks", [])
-    for chunk in chunks:
-        st.write(f"**Text:** {chunk['text']}  \n**Keywords:** {chunk['keywords']}")
-
-    # Sorted chunks
-    st.subheader("Sorted Chunks by Importance")
-    sorted_chunks = sorted(chunks, key=lambda x: x.get('importance', 0), reverse=True)
-    for chunk in sorted_chunks:
-        st.write(f"**Text:** {chunk['text']}  \n**Importance:** {chunk['importance']}")
-
-    # Reranked unique chunks
-    st.subheader("Reranked Unique Chunks")
-    unique_chunks = []
-    seen_texts = set()
-    for chunk in sorted_chunks:
-        if chunk["text"] not in seen_texts:
-            unique_chunks.append(chunk)
-            seen_texts.add(chunk["text"])
-    for chunk in unique_chunks:
-        st.write(f"**Text:** {chunk['text']}")
-
-    # Save conversation history to session state
-    st.session_state["conversation"] = conversation
+    st.write("Answer:", data["answer"])
