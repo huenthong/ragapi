@@ -3,7 +3,7 @@ import requests
 import openai
 
 # Define the server URL
-public_url = "https://major-moons-stare.loca.lt"  # Replace with your Colab server URL
+public_url = "https://major-moons-stare.loca.lt"  
 
 openai.api_key = st.secrets["mykey"]
 
@@ -37,8 +37,14 @@ if st.sidebar.button("Set Parameters"):
         "rerank_method": rerank_method,
         "index": index_type
     })
-    st.sidebar.write("Server Response:", response.json())
 
+    try:
+        response_data = response.json()
+        st.sidebar.write("Server Response:", response_data)
+    except requests.JSONDecodeError:
+        st.sidebar.error("Failed to decode JSON from server response.")
+        st.sidebar.write("Raw Response Text:", response.text)
+        
 # Conversational History
 st.header("Query Interface")
 st.text("Include up to 10 previous queries for context.")
