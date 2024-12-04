@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import openai
 
 # Define the server URL
 public_url = "https://major-moons-stare.loca.lt"  # Replace with your Colab server URL
