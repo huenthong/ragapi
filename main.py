@@ -5,6 +5,7 @@ import openai
 # Define the server URL
 public_url = "https://sad-readers-move.loca.lt"  
 
+# OpenAI API Key
 openai.api_key = st.secrets["mykey"]
 
 st.title("Interactive Query System")
@@ -29,36 +30,42 @@ st.sidebar.write({
 
 # Configure parameters on server
 if st.sidebar.button("Set Parameters"):
-    response = requests.post(f"{public_url}/set-parameters", json={
-        "temperature": temperature,
-        "k": k,
-        "chunk_overlap": overlapping,
-        "rerank_method": rerank_method,
-        "index": index_type
-    })
-
     try:
+        response = requests.post(f"{public_url}/set-parameters", json={
+            "temperature": temperature,
+            "k": k,
+            "chunk_overlap": overlapping,
+            "rerank_method": rerank_method,
+            "index": index_type
+        })
         response_data = response.json()
         st.sidebar.write("Server Response:", response_data)
+    except requests.exceptions.RequestException as e:
+        st.sidebar.error(f"Request Error: {e}")
     except requests.JSONDecodeError:
         st.sidebar.error("Failed to decode JSON from server response.")
         st.sidebar.write("Raw Response Text:", response.text)
 
 # Conversational History
 st.header("Query Interface")
-conversation = st.session_state.get("conversation", [])
+if "conversation" not in st.session_state:
+    st.session_state["conversation"] = []
 
 user_query = st.text_input("Enter your query:")
 if st.button("Submit Query"):
-    if len(conversation) >= 10:
-        conversation.pop(0)
-    conversation.append(user_query)
+    if user_query.strip():  # Ensure the query is not empty
+        st.session_state["conversation"].append(user_query)
 
-    response = requests.post(f"{public_url}/query", params={"query": user_input})
-
-if response.status_code == 200:
-    data = response.json()
-    st.write("Full response:", data)
-    st.write("Answer:", data.get("answer", "No answer found in the response"))
-else:
-    st.write("API Error:", response.status_code, response.text)
+        # Make the API call
+        try:
+            response = requests.post(f"{public_url}/query", params={"query": user_query})
+            if response.status_code == 200:
+                data = response.json()
+                st.write("Full response:", data)
+                st.write("Answer:", data.get("answer", "No answer found in the response"))
+            else:
+                st.error(f"API Error: {response.status_code} {response.text}")
+        except requests.exceptions.RequestException as e:
+            st.error(f"Request Error: {e}")
+    else:
+        st.warning("Please enter a query before submitting.")
