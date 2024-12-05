@@ -3,7 +3,7 @@ import requests
 import openai
 
 # Define the server URL
-public_url = "https://two-snakes-heal.loca.lt"  
+public_url = "https://sad-readers-move.loca.lt"  
 
 openai.api_key = st.secrets["mykey"]
 
