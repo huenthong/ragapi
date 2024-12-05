@@ -54,7 +54,11 @@ if st.button("Submit Query"):
         conversation.pop(0)
     conversation.append(user_query)
 
-    response = requests.post(f"{public_url}/query", params={"query": user_query})
-    data = response.json()
+    response = requests.post(f"{public_url}/query", params={"query": user_input})
 
-    st.write("Answer:", data["answer"])
+if response.status_code == 200:
+    data = response.json()
+    st.write("Full response:", data)
+    st.write("Answer:", data.get("answer", "No answer found in the response"))
+else:
+    st.write("API Error:", response.status_code, response.text)
