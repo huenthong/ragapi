@@ -8,7 +8,7 @@ public_url = "https://clever-eyes-rescue.loca.lt"
 # OpenAI API Key
 openai.api_key = st.secrets["mykey"]
 
-st.title("Interactive Query System")
+st.title("RAG LLM")
 
 # Parameter Configuration
 st.sidebar.header("Configuration")
@@ -67,7 +67,7 @@ if st.button("Submit Query"):
             response = requests.post(f"{public_url}/query", params={"query": user_query})
             if response.status_code == 200:
                 data = response.json()
-                st.write("Full response:", data)
+                #st.write("Full response:", data)
                 st.write("Answer:", data.get("answer", "No answer found in the response"))
             else:
                 st.error(f"API Error: {response.status_code} {response.text}")
