@@ -3,7 +3,7 @@ import requests
 import openai
 
 # Define the server URL
-public_url = "https://thick-sides-prove.loca.lt"  
+public_url = "https://cyan-files-ring.loca.lt"  
 
 # OpenAI API Key
 openai.api_key = st.secrets["mykey"]
