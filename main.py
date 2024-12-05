@@ -3,7 +3,7 @@ import requests
 import openai
 
 # Define the server URL
-public_url = "https://cyan-files-ring.loca.lt"  
+public_url = "https://four-gifts-jam.loca.lt"  
 
 # OpenAI API Key
 openai.api_key = st.secrets["mykey"]
@@ -18,6 +18,10 @@ overlapping = st.sidebar.number_input("Overlapping Words", min_value=0, max_valu
 rerank_method = st.sidebar.selectbox("Rerank Method", ["similarity", "importance"])
 index_type = st.sidebar.selectbox("Index Type", ["basic", "rerank"])
 
+# Input for custom keywords
+keywords_input = st.sidebar.text_area("Custom Keywords", "urgent, important, priority")
+keywords = [keyword.strip() for keyword in keywords_input.split(",")]
+
 # Display user inputs
 st.sidebar.subheader("Selected Parameters")
 st.sidebar.write({
@@ -25,7 +29,8 @@ st.sidebar.write({
     "Top-k": k,
     "Overlapping": overlapping,
     "Rerank Method": rerank_method,
-    "Index Type": index_type
+    "Index Type": index_type,
+    "Keywords": keywords
 })
 
 # Configure parameters on server
@@ -36,7 +41,8 @@ if st.sidebar.button("Set Parameters"):
             "k": k,
             "chunk_overlap": overlapping,
             "rerank_method": rerank_method,
-            "index": index_type
+            "index": index_type,
+            "keywords": keywords  # Include keywords in the request
         })
         response_data = response.json()
         st.sidebar.write("Server Response:", response_data)
@@ -69,3 +75,4 @@ if st.button("Submit Query"):
             st.error(f"Request Error: {e}")
     else:
         st.warning("Please enter a query before submitting.")
+
