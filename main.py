@@ -4,7 +4,7 @@ import openai
 import time
 
 # Define the server URL
-public_url = "https://red-jars-shake.loca.lt"
+public_url = "https://sweet-wolves-train.loca.lt"
 
 # OpenAI API Key
 openai.api_key = st.secrets["mykey"]
