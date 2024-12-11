@@ -90,10 +90,10 @@ if st.button("Submit Query"):
                     if chunks:
                         st.write("\n### Supporting Information")
                         for chunk in chunks:
-                            content = chunk.get("content", "No content available.")
+                            content = chunk.get("content", "No content available.").replace("\n", " ")
                             source = chunk.get("source", "Unknown Source")
                             st.markdown(
-                                f"- **From {source}:**\n\n{content.replace('\n', ' ')}"
+                                f"- **From {source}:**\n\n{content}"
                             )
 
                     break  # Exit retry loop on success
