@@ -71,33 +71,37 @@ if st.button("Submit Query"):
                 response = requests.post(f"{public_url}/query", params={"query": user_query})
                 if response.status_code == 200:
                     data = response.json()
-                    # Format the output
+
+                    # Extract and format the answer
                     answer = data.get("answer", "No answer found.")
                     references = data.get("references", [])
                     chunks = data.get("chunks", [])
-                    
-                    # Create a readable output
+
+                    # Display the formatted output
                     st.write("### Answer")
-                    st.write(answer)
-                    
+                    st.write(f"{answer}")
+
                     if references:
                         st.write("\n### References")
-                        for ref in references:
-                            st.write(f"- {ref}")
-                    
+                        st.markdown(
+                            "\n".join([f"- **Reference:** {ref}" for ref in references])
+                        )
+
                     if chunks:
-                        st.write("\n### Supporting Chunks")
+                        st.write("\n### Supporting Information")
                         for chunk in chunks:
-                            content = chunk.get("content", "")
+                            content = chunk.get("content", "No content available.")
                             source = chunk.get("source", "Unknown Source")
-                            st.write(f"- From `{source}`: {content}")
-                    
+                            st.markdown(
+                                f"- **From {source}:**\n\n{content.replace('\n', ' ')}"
+                            )
+
                     break  # Exit retry loop on success
                 else:
                     st.error(f"API Error: {response.status_code} {response.text}")
             except requests.exceptions.RequestException as e:
                 st.error(f"Request Error: {e}")
-            
+
             if attempt < max_retries - 1:
                 st.warning(f"Retrying in {retry_delay} seconds... (Attempt {attempt + 2}/{max_retries})")
                 time.sleep(retry_delay)
