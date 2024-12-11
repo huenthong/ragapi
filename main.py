@@ -4,14 +4,14 @@ import openai
 import time
 
 # Define the server URL
-public_url = "https://ready-papers-do.loca.lt"
+public_url = "https://red-jars-shake.loca.lt"
 
 # OpenAI API Key
 openai.api_key = st.secrets["mykey"]
 
 st.title("RAG LLM")
 
-# Parameter Configuration
+# Sidebar: Parameter Configuration
 st.sidebar.header("Configuration")
 temperature = st.sidebar.slider("Temperature", 0.0, 1.0, 0.5, 0.01)
 k = st.sidebar.number_input("Top-k", min_value=1, max_value=50, value=10)
@@ -23,7 +23,7 @@ index_type = st.sidebar.selectbox("Index Type", ["basic", "rerank"])
 keywords_input = st.sidebar.text_area("Custom Keywords (Optional)", "")
 keywords = [keyword.strip() for keyword in keywords_input.split(",") if keyword.strip()] if keywords_input else None
 
-# Display user inputs
+# Display selected parameters
 st.sidebar.subheader("Selected Parameters")
 st.sidebar.write({
     "Temperature": temperature,
@@ -34,7 +34,7 @@ st.sidebar.write({
     "Keywords": keywords or "None"
 })
 
-# Configure parameters on server
+# Configure parameters on the server
 if st.sidebar.button("Set Parameters"):
     try:
         response = requests.post(f"{public_url}/set-parameters", json={
@@ -43,9 +43,10 @@ if st.sidebar.button("Set Parameters"):
             "chunk_overlap": overlapping,
             "rerank_method": rerank_method,
             "index": index_type,
-            "keywords": keywords  # Include keywords only if provided
+            "keywords": keywords  # Include keywords if provided
         })
         response_data = response.json()
+        st.sidebar.success("Parameters updated successfully!")
         st.sidebar.write("Server Response:", response_data)
     except requests.exceptions.RequestException as e:
         st.sidebar.error(f"Request Error: {e}")
@@ -53,7 +54,7 @@ if st.sidebar.button("Set Parameters"):
         st.sidebar.error("Failed to decode JSON from server response.")
         st.sidebar.write("Raw Response Text:", response.text)
 
-# Conversational History
+# Conversational History and Query Interface
 st.header("Query Interface")
 if "conversation" not in st.session_state:
     st.session_state["conversation"] = []
@@ -68,7 +69,10 @@ if st.button("Submit Query"):
         retry_delay = 5  # Seconds
         for attempt in range(max_retries):
             try:
-                response = requests.post(f"{public_url}/query", params={"query": user_query})
+                response = requests.post(f"{public_url}/query", json={
+                    "query": user_query,
+                    "keywords": keywords  # Pass custom keywords if provided
+                })
                 if response.status_code == 200:
                     data = response.json()
 
@@ -109,5 +113,6 @@ if st.button("Submit Query"):
             st.error("Failed to fetch the response after multiple retries.")
     else:
         st.warning("Please enter a query before submitting.")
+
 
 
