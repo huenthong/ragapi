@@ -69,11 +69,12 @@ if st.button("Submit Query"):
         retry_delay = 5  # Seconds
         for attempt in range(max_retries):
             try:
-                # Corrected payload structure
+                # Send both `query` and `keywords` in the JSON body
                 response = requests.post(f"{public_url}/query", json={
                     "query": user_query,
-                    "keywords": keywords or []  # Ensure keywords is a valid list
+                    "keywords": keywords or []  # Ensure keywords is a valid list, default to empty
                 })
+
                 if response.status_code == 200:
                     data = response.json()
 
@@ -114,6 +115,7 @@ if st.button("Submit Query"):
             st.error("Failed to fetch the response after multiple retries.")
     else:
         st.warning("Please enter a query before submitting.")
+
 
 
 
