@@ -166,8 +166,19 @@ if st.button("Show History"):
 
 # Clear conversation history
 if st.button("Clear Conversation History"):
-    st.session_state["conversation"] = []
-    st.success("Conversation history cleared.")
+    if not st.session_state["public_url"]:
+        st.error("Please set the server URL first.")
+    else:
+        try:
+            # Call the server's clear history endpoint
+            response = requests.post(f"{st.session_state['public_url']}/clear-history")
+            if response.status_code == 200:
+                st.session_state["conversation"] = []
+                st.success("Conversation history cleared successfully!")
+            else:
+                st.error(f"Failed to clear server history. Status code: {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            st.error(f"Request Error: {e}")
 
 # Download history as JSON
 def download_history():
