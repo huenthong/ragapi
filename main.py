@@ -130,3 +130,29 @@ if st.button("Submit Query"):
             st.error("Failed to fetch the response after multiple retries.")
     else:
         st.warning("Please enter a query before submitting.")
+
+# Fetch and Display Query History
+def fetch_history():
+    try:
+        response = requests.get(f"{st.session_state['public_url']}/history")
+        if response.status_code == 200:
+            return response.json().get("history", [])
+        else:
+            st.error(f"Failed to fetch history. Status code: {response.status_code}")
+            return []
+    except requests.exceptions.RequestException as e:
+        st.error(f"Request Error: {e}")
+        return []
+
+if st.button("Show History"):
+    if not st.session_state["public_url"]:
+        st.error("Please set the server URL first.")
+    else:
+        history = fetch_history()
+        if history:
+            st.write("### Query History (Last 10 Entries)")
+            for i, entry in enumerate(history, 1):
+                st.markdown(f"{i}. {entry}")
+        else:
+            st.info("No history available.")
+
