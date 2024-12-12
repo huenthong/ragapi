@@ -137,7 +137,8 @@ def fetch_history():
     try:
         response = requests.get(f"{st.session_state['public_url']}/history")
         if response.status_code == 200:
-            return response.json().get("history", [])
+            # Directly return the list, assuming response.json() is a list
+            return response.json()
         else:
             st.error(f"Failed to fetch history. Status code: {response.status_code}")
             return []
@@ -152,7 +153,7 @@ if st.button("Show History"):
         history = fetch_history()
         if history:
             st.write("### Query History (Last 10 Entries)")
-            for i, entry in enumerate(history, 1):
+            for i, entry in enumerate(history[:10], 1):  # Display up to 10 entries
                 st.markdown(f"{i}. {entry}")
         else:
             st.info("No history available.")
