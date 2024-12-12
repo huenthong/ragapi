@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import openai
 import time
+import json
 
 # OpenAI API Key
 openai.api_key = st.secrets["mykey"]
@@ -155,4 +156,32 @@ if st.button("Show History"):
                 st.markdown(f"{i}. {entry}")
         else:
             st.info("No history available.")
+
+# Clear conversation history
+if st.button("Clear Conversation History"):
+    st.session_state["conversation"] = []
+    st.success("Conversation history cleared.")
+
+# Download history as JSON
+def download_history():
+    return json.dumps(st.session_state.get("conversation", []), indent=2)
+
+if st.button("Download History as JSON"):
+    history_json = download_history()
+    st.download_button(
+        label="Download History",
+        data=history_json,
+        file_name="conversation_history.json",
+        mime="application/json"
+    )
+
+# Toggle conversation display
+if st.checkbox("Show Conversation History"):
+    if st.session_state["conversation"]:
+        st.write("### Conversation History")
+        for msg in st.session_state["conversation"]:
+            st.markdown(f"- {msg}")
+    else:
+        st.info("No conversation history available.")
+
 
