@@ -105,18 +105,24 @@ if st.button("Submit Query"):
 
                     if references:
                         st.write("\n### References")
-                        st.markdown(
-                            "\n".join([f"- **Reference:** {ref}" for ref in references])
-                        )
+                        for ref in references:
+                            st.markdown(f"- {ref} pg xxx")
 
                     if chunks:
                         st.write("\n### Supporting Information")
                         for chunk in chunks:
+                            index = chunk.get("index", "Unknown Index")
                             content = chunk.get("content", "No content available.").replace("\n", " ")
                             source = chunk.get("source", "Unknown Source")
-                            st.markdown(
-                                f"- **From {source}:**\n\n{content}"
-                            )
+                            keywords = ", ".join(chunk.get("keywords", [])) or "No keywords"
+                            score = chunk.get("score", "No score")
+
+                            st.markdown(f"""
+                            - **Chunk {index}**: {content}
+                              - Source: {source}
+                              - Keywords: {keywords}
+                              - Score: {score}
+                            """)
 
                     break  # Exit retry loop on success
                 else:
