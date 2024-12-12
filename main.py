@@ -8,9 +8,18 @@ openai.api_key = st.secrets["mykey"]
 
 st.title("RAG LLM")
 
-# Sidebar: Server URL Input
+# Sidebar: Server URL Configuration
 st.sidebar.header("Server Configuration")
-public_url = st.sidebar.text_input("Enter Server URL", placeholder="https://your-server-url")
+if "public_url" not in st.session_state:
+    st.session_state["public_url"] = ""
+
+entered_url = st.sidebar.text_input("Enter Server URL", placeholder="https://your-server-url")
+if st.sidebar.button("Submit URL"):
+    if entered_url.strip():
+        st.session_state["public_url"] = entered_url.strip()
+        st.sidebar.success(f"Server URL set to: {st.session_state['public_url']}")
+    else:
+        st.sidebar.error("Please enter a valid server URL.")
 
 # Sidebar: Parameter Configuration
 st.sidebar.header("Parameter Configuration")
@@ -37,11 +46,11 @@ st.sidebar.write({
 
 # Configure parameters on the server
 if st.sidebar.button("Set Parameters"):
-    if not public_url.strip():
-        st.sidebar.error("Please enter a valid server URL.")
+    if not st.session_state["public_url"]:
+        st.sidebar.error("Please set the server URL first.")
     else:
         try:
-            response = requests.post(f"{public_url}/set-parameters", json={
+            response = requests.post(f"{st.session_state['public_url']}/set-parameters", json={
                 "temperature": temperature,
                 "k": k,
                 "chunk_overlap": overlapping,
@@ -65,8 +74,8 @@ if "conversation" not in st.session_state:
 
 user_query = st.text_input("Enter your query:")
 if st.button("Submit Query"):
-    if not public_url.strip():
-        st.error("Please enter a valid server URL in the sidebar.")
+    if not st.session_state["public_url"]:
+        st.error("Please set the server URL first.")
     elif user_query.strip():  # Ensure the query is not empty
         st.session_state["conversation"].append(user_query)
 
@@ -76,7 +85,7 @@ if st.button("Submit Query"):
         for attempt in range(max_retries):
             try:
                 # Send both `query` and `keywords` in the JSON body
-                response = requests.post(f"{public_url}/query", json={
+                response = requests.post(f"{st.session_state['public_url']}/query", json={
                     "query": user_query,
                     "keywords": keywords or []  # Ensure keywords is a valid list, default to empty
                 })
@@ -121,9 +130,3 @@ if st.button("Submit Query"):
             st.error("Failed to fetch the response after multiple retries.")
     else:
         st.warning("Please enter a query before submitting.")
-
-
-
-
-
-
