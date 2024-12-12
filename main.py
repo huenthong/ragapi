@@ -6,9 +6,12 @@ import time
 # Function to validate URL
 def is_valid_url(url):
     try:
-        response = requests.get(f"{url}/health", timeout=5)
+        # Remove trailing slash to prevent double slashes
+        url = url.rstrip('/')
+        response = requests.get(f"{url}/health", timeout=5, verify=False)
         return response.status_code == 200
-    except:
+    except requests.exceptions.RequestException as e:
+        st.error(f"Connection error: {e}")
         return False
 
 # Initialize session state for URL if not exists
