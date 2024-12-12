@@ -3,15 +3,41 @@ import requests
 import openai
 import time
 
-# Define the server URL
-public_url = "https://plenty-rivers-relax.loca.lt"
+# Function to validate URL
+def is_valid_url(url):
+    try:
+        response = requests.get(f"{url}/health", timeout=5)
+        return response.status_code == 200
+    except:
+        return False
+
+# Initialize session state for URL if not exists
+if 'public_url' not in st.session_state:
+    st.session_state.public_url = ""
+
+# Title
+st.title("RAG LLM")
+
+# URL Input Section
+st.header("Server Configuration")
+url_input = st.text_input(
+    "Enter Server URL", 
+    value=st.session_state.public_url, 
+    placeholder="https://your-server-url.loca.lt"
+)
+
+# Validate URL
+if url_input:
+    if is_valid_url(url_input):
+        st.session_state.public_url = url_input
+        st.success("Server URL validated successfully!")
+    else:
+        st.error("Invalid or unreachable server URL. Please check and try again.")
 
 # OpenAI API Key
 openai.api_key = st.secrets["mykey"]
 
-st.title("RAG LLM")
-
-# Sidebar: Parameter Configuration
+# Rest of your existing sidebar configuration remains the same
 st.sidebar.header("Configuration")
 temperature = st.sidebar.slider("Temperature", 0.0, 1.0, 0.5, 0.01)
 k = st.sidebar.number_input("Top-k", min_value=1, max_value=50, value=10)
@@ -36,32 +62,41 @@ st.sidebar.write({
 
 # Configure parameters on the server
 if st.sidebar.button("Set Parameters"):
-    try:
-        response = requests.post(f"{public_url}/set-parameters", json={
-            "temperature": temperature,
-            "k": k,
-            "chunk_overlap": overlapping,
-            "rerank_method": rerank_method,
-            "index": index_type,
-            "keywords": keywords  # Include keywords if provided
-        })
-        response_data = response.json()
-        st.sidebar.success("Parameters updated successfully!")
-        st.sidebar.write("Server Response:", response_data)
-    except requests.exceptions.RequestException as e:
-        st.sidebar.error(f"Request Error: {e}")
-    except requests.JSONDecodeError:
-        st.sidebar.error("Failed to decode JSON from server response.")
-        st.sidebar.write("Raw Response Text:", response.text)
+    if not st.session_state.public_url:
+        st.sidebar.error("Please enter a valid server URL first!")
+    else:
+        try:
+            response = requests.post(f"{st.session_state.public_url}/set-parameters", json={
+                "temperature": temperature,
+                "k": k,
+                "chunk_overlap": overlapping,
+                "rerank_method": rerank_method,
+                "index": index_type,
+                "keywords": keywords  # Include keywords if provided
+            })
+            response_data = response.json()
+            st.sidebar.success("Parameters updated successfully!")
+            st.sidebar.write("Server Response:", response_data)
+        except requests.exceptions.RequestException as e:
+            st.sidebar.error(f"Request Error: {e}")
+        except requests.JSONDecodeError:
+            st.sidebar.error("Failed to decode JSON from server response.")
+            st.sidebar.write("Raw Response Text:", response.text)
 
 # Conversational History and Query Interface
 st.header("Query Interface")
 if "conversation" not in st.session_state:
     st.session_state["conversation"] = []
 
+# Ensure public URL is set before allowing query
 user_query = st.text_input("Enter your query:")
 if st.button("Submit Query"):
-    if user_query.strip():  # Ensure the query is not empty
+    # Check if server URL is set
+    if not st.session_state.public_url:
+        st.error("Please enter a valid server URL first!")
+    elif not user_query.strip():
+        st.warning("Please enter a query before submitting.")
+    else:
         st.session_state["conversation"].append(user_query)
 
         # Make the API call with retry logic
@@ -70,7 +105,7 @@ if st.button("Submit Query"):
         for attempt in range(max_retries):
             try:
                 # Send both `query` and `keywords` in the JSON body
-                response = requests.post(f"{public_url}/query", json={
+                response = requests.post(f"{st.session_state.public_url}/query", json={
                     "query": user_query,
                     "keywords": keywords or []  # Ensure keywords is a valid list, default to empty
                 })
@@ -113,8 +148,6 @@ if st.button("Submit Query"):
                 time.sleep(retry_delay)
         else:
             st.error("Failed to fetch the response after multiple retries.")
-    else:
-        st.warning("Please enter a query before submitting.")
 
 
 
