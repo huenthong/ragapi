@@ -94,7 +94,7 @@ if st.button("Submit Query"):
                 if response.status_code == 200:
                     data = response.json()
 
-                    # Extract and format the answer
+                    # Extract and display the answer without converting to JSON format
                     answer = data.get("answer", "No answer found.")
                     references = data.get("references", [])
                     chunks = data.get("chunks", [])
@@ -106,7 +106,7 @@ if st.button("Submit Query"):
                     if references:
                         st.write("\n### References")
                         for ref in references:
-                            st.markdown(f"- {ref} pg xxx")
+                            st.markdown(f"- {ref}")
 
                     if chunks:
                         st.write("\n### Supporting Information")
@@ -200,5 +200,3 @@ if st.checkbox("Show Conversation History"):
             st.markdown(f"- {msg}")
     else:
         st.info("No conversation history available.")
-
-
