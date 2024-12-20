@@ -143,7 +143,6 @@ def fetch_history():
     try:
         response = requests.get(f"{st.session_state['public_url']}/history")
         if response.status_code == 200:
-            # Directly return the list, assuming response.json() is a list
             return response.json()
         else:
             st.error(f"Failed to fetch history. Status code: {response.status_code}")
