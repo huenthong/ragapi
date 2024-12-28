@@ -3,6 +3,7 @@ import requests
 import openai
 import time
 import json
+from datetime import datetime
 
 # OpenAI API Key
 openai.api_key = st.secrets["mykey"]
@@ -27,7 +28,7 @@ st.sidebar.header("Parameter Configuration")
 temperature = st.sidebar.slider("Temperature", 0.0, 1.0, 0.5, 0.01)
 k = st.sidebar.number_input("Top-k", min_value=1, max_value=50, value=10)
 overlapping = st.sidebar.number_input("Overlapping Words", min_value=0, max_value=100, value=5)
-rerank_method = st.sidebar.selectbox("Rerank Method", ["similarity", "importance"])
+rerank_method = st.sidebar.selectbox("Rerank Method", ["similarity", "keyword"])
 index_type = st.sidebar.selectbox("Index Type", ["basic", "rerank"])
 
 # Input for custom keywords (optional)
@@ -57,7 +58,7 @@ if st.sidebar.button("Set Parameters"):
                 "chunk_overlap": overlapping,
                 "rerank_method": rerank_method,
                 "index": index_type,
-                "keywords": keywords  # Include keywords if provided
+                "keywords": keywords
             })
             response_data = response.json()
             st.sidebar.success("Parameters updated successfully!")
@@ -68,135 +69,105 @@ if st.sidebar.button("Set Parameters"):
             st.sidebar.error("Failed to decode JSON from server response.")
             st.sidebar.write("Raw Response Text:", response.text)
 
-# Conversational History and Query Interface
+# Query Interface
 st.header("Query Interface")
 if "conversation" not in st.session_state:
     st.session_state["conversation"] = []
 
 user_query = st.text_input("Enter your query:")
+
+def display_conversation_entry(entry):
+    with st.container():
+        st.write("---")
+        st.write(f"**Timestamp:** {entry.get('timestamp', 'No timestamp')}")
+        st.write(f"**Query:** {entry.get('query', 'No query')}")
+        st.write(f"**Answer:** {entry.get('answer', 'No answer')}")
+        
+        if chunks := entry.get('chunks', []):
+            st.write("**Supporting Chunks:**")
+            for chunk in chunks:
+                with st.expander(f"Chunk {chunk.get('chunk_id', 'Unknown ID')}"):
+                    st.write(f"**Content:** {chunk.get('content', 'No content')}")
+                    st.write(f"**Source:** {chunk.get('source', 'Unknown source')}")
+                    st.write(f"**Keywords found:** {', '.join(chunk.get('keywords', [])) or 'None'}")
+                    st.write(f"**Score:** {chunk.get('score', 'No score'):.4f}")
+
+# Submit Query Button
 if st.button("Submit Query"):
     if not st.session_state["public_url"]:
         st.error("Please set the server URL first.")
-    elif user_query.strip():  # Ensure the query is not empty
-        st.session_state["conversation"].append(user_query)
-
-        # Make the API call with retry logic
-        max_retries = 3
-        retry_delay = 5  # Seconds
-        for attempt in range(max_retries):
+    elif user_query.strip():
+        with st.spinner('Processing your query...'):
             try:
-                # Send both `query` and `keywords` in the JSON body
-                response = requests.post(f"{st.session_state['public_url']}/query", json={
-                    "query": user_query,
-                    "keywords": keywords or []  # Ensure keywords is a valid list, default to empty
-                })
-
+                response = requests.post(
+                    f"{st.session_state['public_url']}/query",
+                    json={"query": user_query, "keywords": keywords or []}
+                )
+                
                 if response.status_code == 200:
                     data = response.json()
-
-                    # Extract and display the answer without converting to JSON format
-                    answer = data.get("answer", "No answer found.")
-                    references = data.get("references", [])
-                    chunks = data.get("chunks", [])
-
-                    # Display the formatted output
-                    st.write("### Answer")
-                    st.write(f"{answer}")
-
-                    if references:
-                        st.write("\n### References")
-                        for ref in references:
-                            st.markdown(f"- {ref}")
-
-                    if chunks:
-                        st.write("\n### Supporting Information")
-                        for chunk in chunks:
-                            index = chunk.get("index", "Unknown Index")
-                            content = chunk.get("content", "No content available.").replace("\n", " ")
-                            source = chunk.get("source", "Unknown Source")
-                            keywords = ", ".join(chunk.get("keywords", [])) or "No keywords"
-                            score = chunk.get("score", "No score")
-
-                            st.markdown(f"""
-                            - **Chunk {index}**: {content}
-                              - Source: {source}
-                              - Keywords: {keywords}
-                              - Score: {score}
-                            """)
-
-                    break  # Exit retry loop on success
+                    st.session_state["conversation"].append(data)
+                    
+                    # Display the latest response
+                    st.write("### Latest Response")
+                    display_conversation_entry(data)
                 else:
-                    st.error(f"API Error: {response.status_code} {response.text}")
-            except requests.exceptions.RequestException as e:
+                    st.error(f"Error: {response.status_code} - {response.text}")
+            except Exception as e:
                 st.error(f"Request Error: {e}")
-
-            if attempt < max_retries - 1:
-                st.warning(f"Retrying in {retry_delay} seconds... (Attempt {attempt + 2}/{max_retries})")
-                time.sleep(retry_delay)
-        else:
-            st.error("Failed to fetch the response after multiple retries.")
     else:
         st.warning("Please enter a query before submitting.")
 
-# Fetch and Display Query History
-def fetch_history():
-    try:
-        response = requests.get(f"{st.session_state['public_url']}/history")
-        if response.status_code == 200:
-            return response.json()
-        else:
-            st.error(f"Failed to fetch history. Status code: {response.status_code}")
-            return []
-    except requests.exceptions.RequestException as e:
-        st.error(f"Request Error: {e}")
-        return []
-
-if st.button("Show History"):
-    if not st.session_state["public_url"]:
-        st.error("Please set the server URL first.")
+# Conversation History Display
+if st.checkbox("Show Conversation History"):
+    st.write("### Full Conversation History")
+    if st.session_state["conversation"]:
+        for entry in reversed(st.session_state["conversation"]):
+            display_conversation_entry(entry)
     else:
-        history = fetch_history()
-        if history:
-            st.write("### Query History (Last 10 Entries)")
-            for i, entry in enumerate(history[:10], 1):  # Display up to 10 entries
-                st.markdown(f"{i}. {entry}")
-        else:
-            st.info("No history available.")
+        st.info("No conversation history available.")
 
-# Clear conversation history
+# Clear History Button
 if st.button("Clear Conversation History"):
     if not st.session_state["public_url"]:
         st.error("Please set the server URL first.")
     else:
         try:
-            # Call the server's clear history endpoint
             response = requests.post(f"{st.session_state['public_url']}/clear-history")
             if response.status_code == 200:
                 st.session_state["conversation"] = []
                 st.success("Conversation history cleared successfully!")
             else:
-                st.error(f"Failed to clear server history. Status code: {response.status_code}")
+                st.error(f"Failed to clear history. Status code: {response.status_code}")
+                st.error(f"Error message: {response.text}")
         except requests.exceptions.RequestException as e:
             st.error(f"Request Error: {e}")
 
-# Download history as JSON
-def download_history():
-    return json.dumps(st.session_state.get("conversation", []), indent=2)
-
-if st.button("Download History as JSON"):
-    history_json = download_history()
-    st.download_button(
-        label="Download History",
-        data=history_json,
-        file_name="conversation_history.json",
-        mime="application/json"
-    )
-
-# Toggle conversation display
-if st.checkbox("Show Conversation History"):
+# Download History Button
+if st.button("Download History"):
     if st.session_state["conversation"]:
-        st.write("### Conversation History")
-        for msg in st.session_state["conversation"]:
-            st.markdown(f"- {msg}")
+        # Convert the conversation history to a JSON string
+        history_json = json.dumps(st.session_state["conversation"], indent=2)
+        # Create a download button
+        st.download_button(
+            label="Download Conversation History",
+            data=history_json,
+            file_name=f"conversation_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json"
+        )
     else:
-        st.info("No conversation history available.")
+        st.warning("No conversation history available to download.")
+
+# Reload Documents Button
+if st.button("Reload Documents"):
+    if not st.session_state["public_url"]:
+        st.error("Please set the server URL first.")
+    else:
+        try:
+            response = requests.post(f"{st.session_state['public_url']}/reload-documents")
+            if response.status_code == 200:
+                st.success("Documents reloaded successfully!")
+            else:
+                st.error(f"Failed to reload documents. Status code: {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            st.error(f"Request Error: {e}")
