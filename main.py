@@ -113,7 +113,7 @@ def show_navigation():
         with col1:
             if st.button("◀ Previous"):
                 steps = ["server_setup", "user_setup", "chatbot_setup", 
-                        "knowledge_setup", "document_upload", "chat"]
+                        "chatbot_config", "knowledge_setup", "document_upload", "chat"]
                 current_idx = steps.index(st.session_state.step)
                 if current_idx > 0:
                     st.session_state.step = steps[current_idx - 1]
@@ -123,7 +123,7 @@ def show_navigation():
         with col4:
             if st.button("Next ▶"):
                 steps = ["server_setup", "user_setup", "chatbot_setup", 
-                        "knowledge_setup", "document_upload", "chat"]
+                        "chatbot_config", "knowledge_setup", "document_upload", "chat"]
                 current_idx = steps.index(st.session_state.step)
                 if current_idx < len(steps) - 1:
                     st.session_state.step = steps[current_idx + 1]
@@ -176,7 +176,7 @@ def show_chatbot_setup():
                     st.session_state.chatbot_id = data["chatbot_id"]
                     st.session_state.step = "chatbot_config"
                     st.success("Chatbot created successfully!")
-                    st.experimental_rerun()
+                    sst.rerun()
             except Exception as e:
                 st.error(f"Error: {str(e)}")
 
@@ -224,7 +224,7 @@ def show_chatbot_config():
                 if response.status_code == 200:
                     st.session_state.step = "knowledge_setup"
                     st.success("Configuration saved successfully!")
-                    st.experimental_rerun()
+                    st.rerun()
             except Exception as e:
                 st.error(f"Error: {str(e)}")
 
@@ -252,7 +252,7 @@ def show_knowledge_setup():
                     data = response.json()
                     st.session_state.knowledge_id = data["knowledge_id"]
                     st.success("Knowledge base created successfully!")
-                    st.experimental_rerun()
+                    st.rerun()
             except Exception as e:
                 st.error(f"Error: {str(e)}")
     
@@ -280,7 +280,7 @@ def show_knowledge_setup():
         
         if st.button("Proceed to Chat"):
             st.session_state.step = "chat"
-            st.experimental_rerun()
+            st.rerun()
 
 def show_chat_interface():
     st.title("Chat Interface")
