@@ -483,7 +483,6 @@ def show_chat_interface():
     
     if st.button("Send") or (user_input and user_input.strip()):
         if user_input.strip():
-            logger.info(f"Sending query: {user_input}")
             try:
                 response = make_api_request(
                     'POST',
@@ -498,24 +497,33 @@ def show_chat_interface():
                 
                 if response and response.status_code == 200:
                     result = response.json()
+                    st.write(f"Timestamp: {result['timestamp']}")
                     st.write("Answer:", result["answer"])
-                    logger.info("Query answered successfully")
                     
                     with st.expander("View Supporting Documents"):
                         for chunk in result["chunks"]:
                             st.markdown(f"**Chunk ID:** {chunk['chunk_id']}")
+                            st.markdown(f"**Timestamp:** {chunk['timestamp']}")
                             st.markdown(f"**Source:** {chunk['source']}")
                             st.markdown(f"**Content:** {chunk['content']}")
                             st.markdown(f"**Score:** {chunk['score']:.4f}")
                             if chunk.get('keywords'):
                                 st.markdown(f"**Keywords:** {', '.join(chunk['keywords'])}")
                             st.markdown("---")
-                else:
-                    logger.error("Failed to get response from API")
-                    st.error("Failed to get response. Please try again.")
-            except Exception as e:
-                logger.error(f"Error processing query: {str(e)}")
-                st.error(f"Error: {str(e)}")
+
+    # History Display
+    if st.button("View History"):
+        try:
+            response = make_api_request('GET', "/history")
+            if response and response.status_code == 200:
+                history = response.json()
+                for entry in history:
+                    st.write(f"Timestamp: {entry['timestamp']}")
+                    st.write(f"Query: {entry['query']}")
+                    st.write(f"Answer: {entry['answer']}")
+                    st.markdown("---")
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
 
     # History and Download Options
     if st.button("View History"):
