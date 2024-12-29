@@ -510,6 +510,9 @@ def show_chat_interface():
                             if chunk.get('keywords'):
                                 st.markdown(f"**Keywords:** {', '.join(chunk['keywords'])}")
                             st.markdown("---")
+            except Exception as e:
+                logger.error(f"Error processing query: {str(e)}")
+                st.error(f"Error: {str(e)}")
 
     # History Display
     if st.button("View History"):
@@ -523,6 +526,7 @@ def show_chat_interface():
                     st.write(f"Answer: {entry['answer']}")
                     st.markdown("---")
         except Exception as e:
+            logger.error(f"Error viewing history: {str(e)}")
             st.error(f"Error: {str(e)}")
 
     # History and Download Options  
