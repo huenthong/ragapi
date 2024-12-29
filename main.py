@@ -521,10 +521,24 @@ def show_chat_interface():
             if response and response.status_code == 200:
                 history = response.json()
                 for entry in history:
-                    st.write(f"Timestamp: {entry['timestamp']}")
-                    st.write(f"Query: {entry['query']}")
-                    st.write(f"Answer: {entry['answer']}")
-                    st.markdown("---")
+                    with st.expander(f"Query: {entry['query'][:100]}..."):
+                        st.write(f"**Timestamp:** {entry['timestamp']}")
+                        st.write(f"**Query:** {entry['query']}")
+                        st.write(f"**Answer:** {entry['answer']}")
+                        
+                        # Display chunks summary
+                        if 'chunks' in entry:
+                            st.write("**Referenced Chunks:**")
+                            for chunk in entry['chunks']:
+                                st.markdown(
+                                    f"""
+                                    - Chunk ID: {chunk['chunk_id']}
+                                    - Source: {chunk['source']}
+                                    - Score: {chunk['score']:.4f}
+                                    - Keywords: {', '.join(chunk.get('keywords', []))}
+                                    """
+                                )
+                        st.markdown("---")
         except Exception as e:
             logger.error(f"Error viewing history: {str(e)}")
             st.error(f"Error: {str(e)}")
