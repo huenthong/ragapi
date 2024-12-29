@@ -65,18 +65,47 @@ def make_api_request(method: str, endpoint: str, max_retries: int = 3, **kwargs)
     return None
 
 # Server URL Configuration
-st.sidebar.header("Server Configuration")
-entered_url = st.sidebar.text_input("Enter Server URL", 
-                                  value=st.session_state.server_url,
-                                  placeholder="http://localhost:8000")
-if st.sidebar.button("Connect to Server"):
-    if entered_url.strip():
-        st.session_state.server_url = entered_url.strip()
-        logging.info(f"Connected to server: {st.session_state.server_url}")
-        st.sidebar.success(f"Connected to: {st.session_state.server_url}")
-    else:
-        logging.error("Invalid server URL provided")
-        st.sidebar.error("Please enter a valid server URL")
+#st.sidebar.header("Server Configuration")
+#entered_url = st.sidebar.text_input("Enter Server URL", 
+                                  #value=st.session_state.server_url,
+                                  #placeholder="http://localhost:8000")
+#if st.sidebar.button("Connect to Server"):
+    #if entered_url.strip():
+        #st.session_state.server_url = entered_url.strip()
+        #logging.info(f"Connected to server: {st.session_state.server_url}")
+        #st.sidebar.success(f"Connected to: {st.session_state.server_url}")
+   # else:
+        #logging.error("Invalid server URL provided")
+        #st.sidebar.error("Please enter a valid server URL")
+
+def show_server_setup():
+    st.title("Server Configuration")
+    
+    with st.form("server_setup", clear_on_submit=False):
+        entered_url = st.text_input(
+            "Server URL",
+            value=st.session_state.server_url,
+            placeholder="http://localhost:8000"
+        )
+        
+        submitted = st.form_submit_button("Connect to Server")
+        
+        if submitted:
+            if not entered_url.strip():
+                st.error("Please enter a server URL")
+                return
+                
+            entered_url = entered_url.rstrip('/')
+            try:
+                # Test connection with simple GET request
+                response = requests.get(entered_url)
+                st.session_state.server_url = entered_url
+                st.success("✅ Connected successfully!")
+                time.sleep(1)
+                st.session_state.step = "user_setup"
+                st.rerun()
+            except Exception as e:
+                st.error(f"Connection error: {str(e)}")
 
 def show_navigation():
     col1, col2, col3, col4 = st.columns(4)
@@ -103,6 +132,31 @@ def show_navigation():
         
 def show_user_setup():
     st.title("User Setup")
+    
+    # Fetch existing users
+    try:
+        response = requests.get(f"{st.session_state.server_url}/users/list")
+        if response.status_code == 200:
+            existing_users = response.json()
+            
+            # Option to select existing user
+            st.subheader("Select Existing User")
+            selected_user = st.selectbox(
+                "Choose a user",
+                options=[user["user_name"] for user in existing_users],
+                format_func=lambda x: f"User: {x}"
+            )
+            
+            if st.button("Use Selected User"):
+                selected_user_data = next(user for user in existing_users if user["user_name"] == selected_user)
+                st.session_state.user_id = selected_user_data["user_id"]
+                st.session_state.step = "chatbot_setup"
+                st.rerun()
+    except Exception as e:
+        st.error(f"Error fetching users: {str(e)}")
+    
+    # Create new user
+    st.subheader("Create New User")
     with st.form("user_setup"):
         user_name = st.text_input("Enter your name")
         submitted = st.form_submit_button("Create User")
@@ -117,17 +171,47 @@ def show_user_setup():
                 if response.status_code == 200:
                     data = response.json()
                     st.session_state.user_id = data["user_id"]
-                    st.session_state.step = "chatbot_setup"
                     st.success("User created successfully!")
                     time.sleep(1)
+                    st.session_state.step = "chatbot_setup"
                     st.rerun()
                 else:
-                    st.error(response.json()["detail"])
+                    st.error(response.json().get("detail", "Error creating user"))
             except Exception as e:
                 st.error(f"Error: {str(e)}")
 
 def show_chatbot_setup():
     st.title("Chatbot Setup")
+    
+    # Fetch existing chatbots
+    try:
+        response = requests.get(
+            f"{st.session_state.server_url}/chatbots/list/{st.session_state.user_id}"
+        )
+        if response.status_code == 200:
+            existing_chatbots = response.json()
+            
+            # Option to select existing chatbot
+            st.subheader("Select Existing Chatbot")
+            selected_chatbot = st.selectbox(
+                "Choose a chatbot",
+                options=[chatbot["chatbot_name"] for chatbot in existing_chatbots],
+                format_func=lambda x: f"Chatbot: {x}"
+            )
+            
+            if st.button("Use Selected Chatbot"):
+                selected_chatbot_data = next(
+                    chatbot for chatbot in existing_chatbots 
+                    if chatbot["chatbot_name"] == selected_chatbot
+                )
+                st.session_state.chatbot_id = selected_chatbot_data["chatbot_id"]
+                st.session_state.step = "knowledge_setup"
+                st.rerun()
+    except Exception as e:
+        st.error(f"Error fetching chatbots: {str(e)}")
+    
+    # Create new chatbot
+    st.subheader("Create New Chatbot")
     with st.form("chatbot_setup"):
         chatbot_name = st.text_input("Chatbot Name")
         chatbot_desc = st.text_area("Chatbot Description")
@@ -146,9 +230,12 @@ def show_chatbot_setup():
                 if response.status_code == 200:
                     data = response.json()
                     st.session_state.chatbot_id = data["chatbot_id"]
-                    st.session_state.step = "chatbot_config"
                     st.success("Chatbot created successfully!")
+                    time.sleep(1)
+                    st.session_state.step = "knowledge_setup"
                     st.rerun()
+                else:
+                    st.error(response.json().get("detail", "Error creating chatbot"))
             except Exception as e:
                 st.error(f"Error: {str(e)}")
 
@@ -203,9 +290,35 @@ def show_chatbot_config():
 def show_knowledge_setup():
     st.title("Knowledge Base Setup")
     
-    # Create Knowledge Base
+    # Fetch existing knowledge bases
+    try:
+        response = requests.get(
+            f"{st.session_state.server_url}/knowledge/list/{st.session_state.chatbot_id}"
+        )
+        if response.status_code == 200:
+            existing_knowledge_bases = response.json()
+            
+            # Option to select existing knowledge base
+            st.subheader("Select Existing Knowledge Base")
+            selected_kb = st.selectbox(
+                "Choose a knowledge base",
+                options=[kb["knowledge_name"] for kb in existing_knowledge_bases],
+                format_func=lambda x: f"Knowledge Base: {x}"
+            )
+            
+            if st.button("Use Selected Knowledge Base"):
+                selected_kb_data = next(
+                    kb for kb in existing_knowledge_bases 
+                    if kb["knowledge_name"] == selected_kb
+                )
+                st.session_state.knowledge_id = selected_kb_data["knowledge_id"]
+                st.rerun()
+    except Exception as e:
+        st.error(f"Error fetching knowledge bases: {str(e)}")
+    
+    # Create new knowledge base
+    st.subheader("Create New Knowledge Base")
     with st.form("knowledge_base"):
-        st.subheader("Create Knowledge Base")
         knowledge_name = st.text_input("Knowledge Base Name")
         knowledge_desc = st.text_area("Knowledge Base Description")
         submitted = st.form_submit_button("Create Knowledge Base")
@@ -225,18 +338,38 @@ def show_knowledge_setup():
                     st.session_state.knowledge_id = data["knowledge_id"]
                     st.success("Knowledge base created successfully!")
                     st.rerun()
+                else:
+                    st.error(response.json().get("detail", "Error creating knowledge base"))
             except Exception as e:
                 st.error(f"Error: {str(e)}")
     
-    # Upload Documents (if knowledge base exists)
+    # Show document upload section and existing documents
     if st.session_state.knowledge_id:
-        st.subheader("Upload Documents")
-        uploaded_file = st.file_uploader("Choose a file", 
-                                       type=['txt', 'pdf', 'csv'],
-                                       accept_multiple_files=True)
+        st.subheader("Document Management")
         
-        if uploaded_file:
-            for file in uploaded_file:
+        # Show existing documents
+        try:
+            response = requests.get(
+                f"{st.session_state.server_url}/documents/list/{st.session_state.knowledge_id}"
+            )
+            if response.status_code == 200:
+                existing_docs = response.json()
+                if existing_docs:
+                    st.write("Existing Documents:")
+                    for doc in existing_docs:
+                        st.write(f"- {doc['filename']} (Uploaded: {doc['upload_date']})")
+        except Exception as e:
+            st.error(f"Error fetching documents: {str(e)}")
+        
+        # Upload new documents
+        uploaded_files = st.file_uploader(
+            "Upload New Documents",
+            type=['txt', 'pdf', 'csv'],
+            accept_multiple_files=True
+        )
+        
+        if uploaded_files:
+            for file in uploaded_files:
                 try:
                     files = {"file": (file.name, file.getvalue(), "application/octet-stream")}
                     response = requests.post(
@@ -246,9 +379,9 @@ def show_knowledge_setup():
                     if response.status_code == 200:
                         st.success(f"File {file.name} uploaded successfully!")
                     else:
-                        st.error(f"Error uploading {file.name}")
+                        st.error(f"Error uploading {file.name}: {response.json().get('detail', 'Unknown error')}")
                 except Exception as e:
-                    st.error(f"Error: {str(e)}")
+                    st.error(f"Error uploading {file.name}: {str(e)}")
         
         if st.button("Proceed to Chat"):
             st.session_state.step = "chat"
@@ -288,20 +421,24 @@ def show_chat_interface():
     st.subheader("Chat")
     user_input = st.text_input("Your message:")
     
-    def send_query(query: str) -> Optional[dict]:
-        """Send query with automatic retry logic"""
-        try:
-            response = make_api_request(
-                'POST',
-                "/query",
-                json={"query": query}
-            )
-            if response and response.status_code == 200:
-                return response.json()
-        except Exception as e:
-            logging.error(f"Error sending query: {str(e)}")
-            return None
-        return None
+def send_query(query: str) -> Optional[dict]:
+    """Send query with automatic retry logic"""
+    try:
+        response = make_api_request(
+            'POST',
+            "/query",
+            json={
+                "query": query,
+                "chatbot_id": st.session_state.chatbot_id,
+                "knowledge_id": st.session_state.knowledge_id
+            }
+        )
+        if response and response.status_code == 200:
+            return response.json()
+    except Exception as e:
+        logging.error(f"Error sending query: {str(e)}")
+        st.error(f"Error: {str(e)}")
+    return None
     
     if st.button("Send") or (user_input and user_input.strip()):
         if user_input.strip():
