@@ -511,7 +511,7 @@ def show_chat_interface():
                                 st.markdown(f"**Keywords:** {', '.join(chunk['keywords'])}")
                             st.markdown("---")
 
-    # History Display
+    # History and Download Options
     if st.button("View History"):
         try:
             response = make_api_request('GET', "/history")
@@ -523,22 +523,6 @@ def show_chat_interface():
                     st.write(f"Answer: {entry['answer']}")
                     st.markdown("---")
         except Exception as e:
-            st.error(f"Error: {str(e)}")
-
-    # History and Download Options
-    if st.button("View History"):
-        try:
-            logger.info("Fetching chat history")
-            response = make_api_request('GET', "/history")
-            if response and response.status_code == 200:
-                history = response.json()
-                logger.info("Chat history retrieved successfully")
-                for entry in history:
-                    st.write(f"Query: {entry['query']}")
-                    st.write(f"Answer: {entry['answer']}")
-                    st.markdown("---")
-        except Exception as e:
-            logger.error(f"Error retrieving history: {str(e)}")
             st.error(f"Error: {str(e)}")
     
     col1, col2 = st.columns(2)
