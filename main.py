@@ -67,7 +67,6 @@ def show_chatbot_setup():
                     f"{st.session_state.server_url}/chatbots/create",
                     json={
                         "user_id": st.session_state.user_id,
-                        "chatbot_name
                         "chatbot_name": chatbot_name,
                         "chatbot_desc": chatbot_desc
                     }
