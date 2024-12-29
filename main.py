@@ -22,7 +22,7 @@ st.set_page_config(layout="wide")
 
 # Initialize session state variables
 if "step" not in st.session_state:
-    st.session_state.step = "user_setup"
+    st.session_state.step = "server_setup"
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
 if "chatbot_id" not in st.session_state:
@@ -31,6 +31,8 @@ if "knowledge_id" not in st.session_state:
     st.session_state.knowledge_id = None
 if "server_url" not in st.session_state:
     st.session_state.server_url = ""
+if "documents" not in st.session_state:
+    st.session_state.documents = []
 
 def make_api_request(method: str, endpoint: str, max_retries: int = 3, **kwargs) -> Optional[requests.Response]:
     """
@@ -76,6 +78,57 @@ if st.sidebar.button("Connect to Server"):
         logging.error("Invalid server URL provided")
         st.sidebar.error("Please enter a valid server URL")
 
+def show_server_setup():
+    st.title("Server Configuration")
+    with st.form("server_setup"):
+        entered_url = st.text_input(
+            "Enter Server URL",
+            value=st.session_state.server_url,
+            placeholder="http://localhost:8000"
+        )
+        submitted = st.form_submit_button("Connect to Server")
+        
+        if submitted:
+            if entered_url.strip():
+                try:
+                    # Test connection
+                    response = requests.get(f"{entered_url.strip()}/health")
+                    if response.status_code == 200:
+                        st.session_state.server_url = entered_url.strip()
+                        st.session_state.step = "user_setup"
+                        st.success("Connected to server successfully!")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error("Could not connect to server")
+                except Exception as e:
+                    st.error(f"Connection error: {str(e)}")
+            else:
+                st.error("Please enter a valid server URL")
+
+def show_navigation():
+    col1, col2, col3, col4 = st.columns(4)
+    
+    if st.session_state.step != "server_setup":
+        with col1:
+            if st.button("◀ Previous"):
+                steps = ["server_setup", "user_setup", "chatbot_setup", 
+                        "knowledge_setup", "document_upload", "chat"]
+                current_idx = steps.index(st.session_state.step)
+                if current_idx > 0:
+                    st.session_state.step = steps[current_idx - 1]
+                    st.rerun()
+    
+    if st.session_state.step != "chat":
+        with col4:
+            if st.button("Next ▶"):
+                steps = ["server_setup", "user_setup", "chatbot_setup", 
+                        "knowledge_setup", "document_upload", "chat"]
+                current_idx = steps.index(st.session_state.step)
+                if current_idx < len(steps) - 1:
+                    st.session_state.step = steps[current_idx + 1]
+                    st.rerun()
+        
 def show_user_setup():
     st.title("User Setup")
     with st.form("user_setup"):
@@ -84,21 +137,21 @@ def show_user_setup():
         
         if submitted and user_name:
             try:
-                response = make_api_request(
-                    'POST',
-                    "/users/create",
+                response = requests.post(
+                    f"{st.session_state.server_url}/users/create",
                     json={"user_name": user_name}
                 )
                 
-                if response and response.status_code == 200:
+                if response.status_code == 200:
                     data = response.json()
                     st.session_state.user_id = data["user_id"]
                     st.session_state.step = "chatbot_setup"
-                    logging.info(f"User created successfully: {data['user_id']}")
                     st.success("User created successfully!")
-                    st.rerun()  # Using st.rerun() instead of experimental_rerun
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error(response.json()["detail"])
             except Exception as e:
-                logging.error(f"Error creating user: {str(e)}")
                 st.error(f"Error: {str(e)}")
 
 def show_chatbot_setup():
@@ -338,19 +391,23 @@ def show_chat_interface():
 
 # Main App Flow
 def main():
-    if not st.session_state.server_url:
-        logging.warning("Server URL not configured")
-        st.warning("Please configure the server URL in the sidebar first.")
-        return
+    # Show current step
+    st.sidebar.write(f"Current Step: {st.session_state.step}")
     
-    if st.session_state.step == "user_setup":
+    # Show navigation
+    show_navigation()
+    
+    # Main content
+    if st.session_state.step == "server_setup":
+        show_server_setup()
+    elif st.session_state.step == "user_setup":
         show_user_setup()
     elif st.session_state.step == "chatbot_setup":
         show_chatbot_setup()
-    elif st.session_state.step == "chatbot_config":
-        show_chatbot_config()
     elif st.session_state.step == "knowledge_setup":
         show_knowledge_setup()
+    elif st.session_state.step == "document_upload":
+        show_document_upload()
     elif st.session_state.step == "chat":
         show_chat_interface()
 
