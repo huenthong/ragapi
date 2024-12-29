@@ -176,7 +176,7 @@ def show_chatbot_setup():
                     st.session_state.chatbot_id = data["chatbot_id"]
                     st.session_state.step = "chatbot_config"
                     st.success("Chatbot created successfully!")
-                    sst.rerun()
+                    st.rerun()
             except Exception as e:
                 st.error(f"Error: {str(e)}")
 
