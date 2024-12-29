@@ -453,6 +453,10 @@ def show_chat_interface():
         chunk_overlap = st.number_input("Chunk Overlap", 0, 100, 30)
         rerank_method = st.selectbox("Rerank Method", ["similarity", "keyword"])
         
+        # Add keyword input
+        keywords = st.text_input("Keywords (comma-separated)", "")
+        keyword_list = [k.strip() for k in keywords.split(",")] if keywords else None
+        
         if st.button("Update Parameters"):
             try:
                 logger.info("Updating chat parameters")
@@ -487,7 +491,8 @@ def show_chat_interface():
                     json={
                         "query": user_input,
                         "chatbot_id": st.session_state.chatbot_id,
-                        "knowledge_id": st.session_state.knowledge_id
+                        "knowledge_id": st.session_state.knowledge_id,
+                        "keywords": keyword_list
                     }
                 )
                 
@@ -498,9 +503,12 @@ def show_chat_interface():
                     
                     with st.expander("View Supporting Documents"):
                         for chunk in result["chunks"]:
+                            st.markdown(f"**Chunk ID:** {chunk['chunk_id']}")
                             st.markdown(f"**Source:** {chunk['source']}")
                             st.markdown(f"**Content:** {chunk['content']}")
                             st.markdown(f"**Score:** {chunk['score']:.4f}")
+                            if chunk.get('keywords'):
+                                st.markdown(f"**Keywords:** {', '.join(chunk['keywords'])}")
                             st.markdown("---")
                 else:
                     logger.error("Failed to get response from API")
