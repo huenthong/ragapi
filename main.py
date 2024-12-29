@@ -511,7 +511,7 @@ def show_chat_interface():
                                 st.markdown(f"**Keywords:** {', '.join(chunk['keywords'])}")
                             st.markdown("---")
 
-    # History and Download Options
+    # History Display
     if st.button("View History"):
         try:
             response = make_api_request('GET', "/history")
@@ -524,7 +524,8 @@ def show_chat_interface():
                     st.markdown("---")
         except Exception as e:
             st.error(f"Error: {str(e)}")
-    
+
+    # History and Download Options  
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Clear History"):
