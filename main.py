@@ -64,87 +64,19 @@ def make_api_request(method: str, endpoint: str, max_retries: int = 3, **kwargs)
             time.sleep(2 ** attempt)  # Exponential backoff
     return None
 
-# Remove or comment out this section from the original code
-# st.sidebar.header("Server Configuration")
-# entered_url = st.sidebar.text_input("Enter Server URL", 
-#                                   value=st.session_state.server_url,
-#                                   placeholder="http://localhost:8000")
-# if st.sidebar.button("Connect to Server"):
-#     if entered_url.strip():
-#         st.session_state.server_url = entered_url.strip()
-#         logging.info(f"Connected to server: {st.session_state.server_url}")
-#         st.sidebar.success(f"Connected to: {st.session_state.server_url}")
-#     else:
-#         logging.error("Invalid server URL provided")
-#         st.sidebar.error("Please enter a valid server URL")
-
-def show_server_setup():
-    st.title("Server Configuration")
-    
-    # Add some helpful instructions
-    st.markdown("""
-    Please enter the server URL where your backend API is running.
-    - Example: `http://localhost:8000` for local development
-    - Make sure to include `http://` or `https://` in the URL
-    """)
-    
-    with st.form("server_setup", clear_on_submit=False):
-        entered_url = st.text_input(
-            "Server URL",
-            value=st.session_state.server_url,
-            placeholder="http://localhost:8000",
-            help="Enter the complete URL of your backend server"
-        )
-        
-        submitted = st.form_submit_button("Connect to Server")
-        
-        if submitted:
-            if not entered_url.strip():
-                st.error("Please enter a server URL")
-                return
-                
-            if not (entered_url.startswith('http://') or entered_url.startswith('https://')):
-                st.error("URL must start with http:// or https://")
-                return
-                
-            # Remove trailing slash if present
-            entered_url = entered_url.rstrip('/')
-            
-            try:
-                with st.spinner("Testing connection..."):
-                    # Test connection with timeout
-                    response = requests.get(
-                        f"{entered_url}/health",
-                        timeout=5  # 5 seconds timeout
-                    )
-                    
-                    if response.status_code == 200:
-                        st.session_state.server_url = entered_url
-                        st.success("✅ Connected to server successfully!")
-                        
-                        # Log successful connection
-                        logging.info(f"Successfully connected to server: {entered_url}")
-                        
-                        # Wait for 1 second to show success message
-                        time.sleep(1)
-                        
-                        # Update step and trigger rerun
-                        st.session_state.step = "user_setup"
-                        st.rerun()
-                    else:
-                        st.error(f"Server returned status code {response.status_code}. Expected 200.")
-                        logging.error(f"Server connection failed with status code: {response.status_code}")
-                        
-            except requests.exceptions.Timeout:
-                st.error("Connection timed out. Please check if the server is running and try again.")
-                logging.error(f"Connection timeout while trying to connect to: {entered_url}")
-            except requests.exceptions.RequestException as e:
-                st.error(f"Could not connect to server. Please check the URL and try again.\nError: {str(e)}")
-                logging.error(f"Connection error: {str(e)}")
-    
-    # Show current connection status if URL exists
-    if st.session_state.server_url:
-        st.info(f"Currently connected to: {st.session_state.server_url}")
+# Server URL Configuration
+st.sidebar.header("Server Configuration")
+entered_url = st.sidebar.text_input("Enter Server URL", 
+                                  value=st.session_state.server_url,
+                                  placeholder="http://localhost:8000")
+if st.sidebar.button("Connect to Server"):
+    if entered_url.strip():
+        st.session_state.server_url = entered_url.strip()
+        logging.info(f"Connected to server: {st.session_state.server_url}")
+        st.sidebar.success(f"Connected to: {st.session_state.server_url}")
+    else:
+        logging.error("Invalid server URL provided")
+        st.sidebar.error("Please enter a valid server URL")
 
 def show_navigation():
     col1, col2, col3, col4 = st.columns(4)
