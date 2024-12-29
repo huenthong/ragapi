@@ -370,9 +370,7 @@ def main():
     show_navigation()
     
     # Main content
-    if st.session_state.step == "server_setup":
-        show_server_setup()
-    elif st.session_state.step == "user_setup":
+    if st.session_state.step == "user_setup":
         show_user_setup()
     elif st.session_state.step == "chatbot_setup":
         show_chatbot_setup()
