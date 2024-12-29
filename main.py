@@ -3,7 +3,17 @@ import requests
 import openai
 import time
 import json
+import logging
 from datetime import datetime
+from typing import Optional
+from requests.exceptions import RequestException
+
+# Configure logging
+logging.basicConfig(
+    filename='chatbot_frontend.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 # OpenAI API Key
 openai.api_key = st.secrets["mykey"]
@@ -22,6 +32,36 @@ if "knowledge_id" not in st.session_state:
 if "server_url" not in st.session_state:
     st.session_state.server_url = ""
 
+def make_api_request(method: str, endpoint: str, max_retries: int = 3, **kwargs) -> Optional[requests.Response]:
+    """
+    Make API request with automatic retries
+    """
+    url = f"{st.session_state.server_url}{endpoint}"
+    attempt = 0
+    while attempt < max_retries:
+        try:
+            logging.info(f"Attempting {method} request to {endpoint} (Attempt {attempt + 1}/{max_retries})")
+            response = requests.request(method, url, **kwargs)
+            
+            if response.status_code == 502:
+                attempt += 1
+                logging.warning(f"502 error encountered. Retrying... (Attempt {attempt}/{max_retries})")
+                time.sleep(2 ** attempt)  # Exponential backoff
+                continue
+                
+            response.raise_for_status()
+            logging.info(f"Successful {method} request to {endpoint}")
+            return response
+            
+        except RequestException as e:
+            attempt += 1
+            logging.error(f"Request failed: {str(e)}")
+            if attempt == max_retries:
+                logging.error("Max retries reached")
+                raise
+            time.sleep(2 ** attempt)  # Exponential backoff
+    return None
+
 # Server URL Configuration
 st.sidebar.header("Server Configuration")
 entered_url = st.sidebar.text_input("Enter Server URL", 
@@ -30,8 +70,10 @@ entered_url = st.sidebar.text_input("Enter Server URL",
 if st.sidebar.button("Connect to Server"):
     if entered_url.strip():
         st.session_state.server_url = entered_url.strip()
+        logging.info(f"Connected to server: {st.session_state.server_url}")
         st.sidebar.success(f"Connected to: {st.session_state.server_url}")
     else:
+        logging.error("Invalid server URL provided")
         st.sidebar.error("Please enter a valid server URL")
 
 def show_user_setup():
@@ -42,17 +84,21 @@ def show_user_setup():
         
         if submitted and user_name:
             try:
-                response = requests.post(
-                    f"{st.session_state.server_url}/users/create",
+                response = make_api_request(
+                    'POST',
+                    "/users/create",
                     json={"user_name": user_name}
                 )
-                if response.status_code == 200:
+                
+                if response and response.status_code == 200:
                     data = response.json()
                     st.session_state.user_id = data["user_id"]
                     st.session_state.step = "chatbot_setup"
+                    logging.info(f"User created successfully: {data['user_id']}")
                     st.success("User created successfully!")
-                    st.experimental_rerun()
+                    st.rerun()  # Using st.rerun() instead of experimental_rerun
             except Exception as e:
+                logging.error(f"Error creating user: {str(e)}")
                 st.error(f"Error: {str(e)}")
 
 def show_chatbot_setup():
@@ -196,8 +242,9 @@ def show_chat_interface():
         
         if st.button("Update Parameters"):
             try:
-                response = requests.post(
-                    f"{st.session_state.server_url}/set-parameters",
+                response = make_api_request(
+                    'POST',
+                    "/set-parameters",
                     json={
                         "temperature": temperature,
                         "k": k,
@@ -205,46 +252,63 @@ def show_chat_interface():
                         "rerank_method": rerank_method
                     }
                 )
-                if response.status_code == 200:
+                if response and response.status_code == 200:
+                    logging.info("Chat parameters updated successfully")
                     st.success("Parameters updated!")
             except Exception as e:
+                logging.error(f"Error updating parameters: {str(e)}")
                 st.error(f"Error: {str(e)}")
     
     # Chat Interface
     st.subheader("Chat")
     user_input = st.text_input("Your message:")
     
-    if st.button("Send"):
-        if user_input.strip():
-            try:
-                response = requests.post(
-                    f"{st.session_state.server_url}/query",
-                    json={"query": user_input}
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    st.write("Answer:", data["answer"])
-                    
-                    with st.expander("View Supporting Documents"):
-                        for chunk in data["chunks"]:
-                            st.markdown(f"**Source:** {chunk['source']}")
-                            st.markdown(f"**Content:** {chunk['content']}")
-                            st.markdown(f"**Score:** {chunk['score']:.4f}")
-                            st.markdown("---")
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
+    def send_query(query: str) -> Optional[dict]:
+        """Send query with automatic retry logic"""
+        try:
+            response = make_api_request(
+                'POST',
+                "/query",
+                json={"query": query}
+            )
+            if response and response.status_code == 200:
+                return response.json()
+        except Exception as e:
+            logging.error(f"Error sending query: {str(e)}")
+            return None
+        return None
     
+    if st.button("Send") or (user_input and user_input.strip()):
+        if user_input.strip():
+            logging.info(f"Sending query: {user_input}")
+            result = send_query(user_input)
+            
+            if result:
+                st.write("Answer:", result["answer"])
+                logging.info("Query answered successfully")
+                
+                with st.expander("View Supporting Documents"):
+                    for chunk in result["chunks"]:
+                        st.markdown(f"**Source:** {chunk['source']}")
+                        st.markdown(f"**Content:** {chunk['content']}")
+                        st.markdown(f"**Score:** {chunk['score']:.4f}")
+                        st.markdown("---")
+            else:
+                st.error("Failed to get response. Please try again.")
+
     # History and Download Options
     if st.button("View History"):
         try:
-            response = requests.get(f"{st.session_state.server_url}/history")
-            if response.status_code == 200:
+            response = make_api_request('GET', "/history")
+            if response and response.status_code == 200:
                 history = response.json()
+                logging.info("Chat history retrieved successfully")
                 for entry in history:
                     st.write(f"Query: {entry['query']}")
                     st.write(f"Answer: {entry['answer']}")
                     st.markdown("---")
         except Exception as e:
+            logging.error(f"Error retrieving history: {str(e)}")
             st.error(f"Error: {str(e)}")
     
     col1, col2 = st.columns(2)
@@ -275,6 +339,7 @@ def show_chat_interface():
 # Main App Flow
 def main():
     if not st.session_state.server_url:
+        logging.warning("Server URL not configured")
         st.warning("Please configure the server URL in the sidebar first.")
         return
     
